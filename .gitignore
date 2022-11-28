@@ -1,0 +1,5 @@
+.cloudbuild*
+.DS_Store
+assets/
+*.egg-info
+__pycache__/

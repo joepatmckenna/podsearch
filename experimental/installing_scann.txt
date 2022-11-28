@@ -1,0 +1,5 @@
+https://eugeneyan.com/writing/how-to-install-scann-on-mac/
+https://github.com/bazelbuild/bazel/issues/13514
+https://github.com/google-research/google-research/issues/1082#issuecomment-1154127224
+
+PYTHON_BIN_PATH=`python3 -c 'import sys; print(sys.executable)'` CC=clang bazel build -c opt --features=thin_lto --copt=-mavx --copt=-mfma --cxxopt="-std=c++17" --copt=-fsized-deallocation --copt=-w :build_pip_pkg

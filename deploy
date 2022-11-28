@@ -1,0 +1,150 @@
+#!/bin/bash
+#
+# Usage
+#  ./deploy --service=search
+#  ./deploy --service=frontend
+#
+set -e
+
+THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+ACCOUNT=joepatmckenna@gmail.com
+GCLOUD_CONFIG=podsearch
+PROJECT=podsearch-367715
+
+declare -a SERVICES=(
+    frontend
+    frontendv2
+    search
+)
+
+IMAGE_REPOSITORY="gcr.io/${PROJECT}"
+
+SERVICE=''
+IMAGE=''
+
+declare -a SRC
+declare -a DEPLOY_FLAGS
+
+function get_src() {
+    if [[ "${SERVICE}" == "search" ]]; then
+        SRC=(
+            assets/search/*
+            requirements.txt
+            py/setup.py
+            py/podsearch
+            py/docker_files/search/Dockerfile
+        )
+    elif [[ "${SERVICE}" == "frontend" ]]; then
+        SRC=(
+            assets/frontend/*
+            frontend/*            
+        )
+    elif [[ "${SERVICE}" == "frontendv2" ]]; then
+        SRC=(
+            assets/frontendv2/*
+            frontendv2/Dockerfile
+            frontendv2/.svelte-kit
+            frontendv2/src
+            frontendv2/package*.json
+            frontendv2/svelte.config.js
+            frontendv2/tsconfig.json
+            frontendv2/vite.config.ts
+        )
+    fi
+    SRC=( "${SRC[@]/#/${THIS_DIR}/}" )
+}
+
+function get_deploy_flags() {
+    if [[ "${SERVICE}" == "search" ]]; then
+        DEPLOY_FLAGS=(
+            --image="${IMAGE}"
+            --allow-unauthenticated
+            --concurrency=default
+            --cpu=1
+            --ingress=all
+            --min-instances=1
+            --max-instances=1
+            --memory=2Gi
+            --cpu-throttling            
+        )
+    elif [[ "${SERVICE}" == "frontend" ]]; then
+        DEPLOY_FLAGS=(
+            --image="${IMAGE}"
+            --allow-unauthenticated
+        )
+    elif [[ "${SERVICE}" == "frontendv2" ]]; then
+        DEPLOY_FLAGS=(
+            --image="${IMAGE}"
+            --allow-unauthenticated
+        )    
+    fi
+}
+
+function setup_google_cloud_sdk() {
+    configs="$(gcloud config configurations list --format="value(NAME)")"
+    if [[ "${configs}" =~ "${GCLOUD_CONFIG}" ]]; then
+        gcloud config configurations activate "${GCLOUD_CONFIG}"
+    else
+        gcloud config configurations create "${GCLOUD_CONFIG}" --activate
+    fi
+    accounts="$(gcloud auth list --format="value(ACCOUNT)")"
+    if [[ "${accounts}" =~ "${ACCOUNT}" ]]; then
+        gcloud config set account "${ACCOUNT}"
+    else
+        gcloud auth login --activate
+    fi
+    gcloud config set project "${PROJECT}"
+    gcloud config set run/region us-central1
+}
+
+function build_image() {
+    local staging_dir="${THIS_DIR}/.cloudbuild.${SERVICE}"
+    rm -rf "${staging_dir}"
+    mkdir -p "${staging_dir}"
+    # python3 "${THIS_DIR}/py/scripts/download_assets.py" --service="${SERVICE}" # costs money
+    get_src "${SERVICE}"
+    rsync -r --exclude-from="${THIS_DIR}/.cloudbuildignore" "${SRC[@]}" "${staging_dir}"
+    gcloud builds submit --tag "${IMAGE}" "${staging_dir}"
+}
+
+function deploy_service() {
+    get_deploy_flags "${SERVICE}"
+    gcloud run deploy "${SERVICE}" "${DEPLOY_FLAGS[@]}"
+}
+
+function main() {
+    IMAGE="${IMAGE_REPOSITORY}/${SERVICE}"
+    setup_google_cloud_sdk
+    build_image
+    deploy_service
+}
+
+declare -a UNRECOGNIZED_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --service=*)
+            SERVICE="${1#*=}"
+            shift
+            ;;
+        --service)
+            SERVICE="${2}"
+            shift
+            shift
+            ;;
+        *)
+            UNRECOGNIZED+=("${1}")
+            shift
+    esac
+done
+
+if [ ${#UNRECOGNIZED_ARGS[@]} != 0 ]; then
+    echo "unrecognized args: ${UNRECOGNIZED_ARGS[@]}"
+fi
+
+if [[ " ${SERVICES[@]} " =~ " ${SERVICE} " ]]; then
+    main "$@"
+else
+    echo "unrecognized service: ${SERVICE}"
+fi

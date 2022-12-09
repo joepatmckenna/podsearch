@@ -4,7 +4,7 @@ import { zip, argsort, sum } from '$lib/utils';
 
 const RESULT_MARGIN_SECS = 300;
 const MAX_RESULTS_PER_VIDEO = 8;
-const SCORE_THRESHOLD = 0.38;
+const SCORE_THRESHOLD = 0.33;
 
 interface SearchResult {
   video_id: string;
@@ -126,8 +126,8 @@ const aggregateResultsByVideo = (results: SearchResult[]) => {
     // add in video metadata
     .map((videoResult) => {
       return { ...videoResult, ...VIDEOS[videoResult.videoId] };
-    })
-    .filter((videoResult) => videoResult.playableInEmbed);
+    });
+    // .filter((videoResult) => videoResult.playableInEmbed);
   // // add in captions
   // .map((videoResult) => {
   //   videoResult.captions = zip([

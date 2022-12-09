@@ -4,9 +4,9 @@
 </script>
 
 <div class="container-fluid p-3">
-  <label for="searchInput" class="form-label"
+  <!-- <label for="searchInput" class="form-label"
     >Search the Lex Fridman podcast:</label
-  >
+  > -->
 
   <form method="POST">
     <div class="input-group">
@@ -25,9 +25,9 @@
 </div>
 
 <style>
-  .form-label {
+  /* .form-label {
     font-weight: bold;
-  }
+  } */
 
   input:focus {
     outline: none;

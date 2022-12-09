@@ -1,6 +1,6 @@
 <script>
+  import NavBar from '$lib/NavBar.svelte';
   import SearchBar from '$lib/SearchBar.svelte';
-  // import Results from '$lib/Results.svelte';
   import ResultsByEpisode from '$lib/ResultsByEpisode.svelte';
 
   export let form;
@@ -39,14 +39,16 @@
   ></script>
 </svelte:head>
 
-<div class="app-container container-sm">
-  <SearchBar {form} />
-  <!-- <Results {form} /> -->
-  <ResultsByEpisode {form} />
+<div class="page-container">
+  <NavBar />
+  <div class="search-container container-sm">
+    <SearchBar {form} />
+    <ResultsByEpisode {form} />
+  </div>
 </div>
 
 <style>
-  .app-container {
+  .search-container {
     max-width: 590px;
     min-height: 100vh;
   }

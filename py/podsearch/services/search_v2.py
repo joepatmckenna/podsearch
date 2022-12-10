@@ -126,6 +126,7 @@ class SearchServer(socketserver.TCPServer):
         return scann.scann_ops_pybind.load_searcher(
             f'{self._asset_dir}/encodings/searcher')
         # except:
+        #     import random
         #     class Searcher:
         #         def __init__(self, n):
         #             self.n = n

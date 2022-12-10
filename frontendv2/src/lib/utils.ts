@@ -26,3 +26,5 @@ export const argsort = (arr) => {
 };
 
 export const sum = (x) => x.reduce((agg, xi) => agg + xi, 0);
+
+export const mean = (x) => (x.length > 0 ? sum(x) / x.length : 0);

@@ -4,20 +4,19 @@
   
 <nav class="navbar navbar-expand-sm">
 
-  <div class="navbar-brand">
-    <img class="logo mx-2" alt="Portrait of Lex" src={logo} />
-  </div>
-
+  
   <div 
     class="navbar-toggler" 
     data-toggle="collapse" 
     data-target="#navbarSupportedContent" 
     aria-controls="navbarSupportedContent" 
     aria-expanded="false" 
-  />
+  >
+    <img class="logo mx-2" alt="Portrait of Lex" src={logo} />
+  </div> 
 
-  <div class="collapse navbar-collapse" id="navbarSupportedContent">
-    <span>Lex Fridman Podcast search engine</span>    
+  <div class="navbar-brand collapse navbar-collapse mx-4" id="navbarSupportedContent">
+    <span><a href="https://lexfridman.com/podcast/">Lex Fridman Podcast</a> search engine</span>    
   </div>
 
   <div class="youtube-link mx-4">
@@ -30,6 +29,16 @@
 
   .navbar {
     background-color: rgb(0,0,0,0.25);
+  }
+
+  .navbar-brand {
+    color: #fff;
+    font-size: medium;
+  }
+
+  a {
+    color: #fff;
+    text-decoration: none;
   }
   
   .logo {

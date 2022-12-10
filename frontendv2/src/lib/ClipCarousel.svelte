@@ -1,11 +1,11 @@
 <script>
   import { zip, argmax } from '$lib/utils';
 
-  export let videoResult;
+  export let clipResult;
   export let isExpanded;
 
-  $: maxIndex = videoResult.scores.length - 1;
-  $: activeIndex = argmax(videoResult.scores);
+  $: maxIndex = clipResult.scores.length - 1;
+  $: activeIndex = argmax(clipResult.scores);
   let lastActiveIndex = activeIndex;
 
   const getCarouselItemClass = (index) => {
@@ -15,7 +15,7 @@
   };
 
   const getDotStyle = (index) => {
-    let s = `left: ${100 * (videoResult.starts[index] / lengthSeconds)}%;`;
+    let s = `left: ${100 * (clipResult.starts[index] / lengthSeconds)}%;`;
     if (index === activeIndex) {
       s +=
         'height: 20px; width: 20px; transform: translate(-10px, -8px); box-shadow: 0px 0px 8px #fff;';
@@ -23,12 +23,12 @@
     return s;
   };
 
-  $: lengthSeconds = videoResult.lengthSeconds;
+  $: lengthSeconds = clipResult.lengthSeconds;
 
-  $: carouselItemClasses = videoResult.scores.map((_, index) =>
+  $: carouselItemClasses = clipResult.scores.map((_, index) =>
     getCarouselItemClass(index)
   );
-  $: dotStyles = videoResult.scores.map((_, index) => getDotStyle(index));
+  $: dotStyles = clipResult.scores.map((_, index) => getDotStyle(index));
 
   $: {
     for (let i of [lastActiveIndex, activeIndex]) {
@@ -89,14 +89,14 @@
   </div> -->
 
   <!-- <div class="col-8" style="background-color:yellow;"> -->
-  <div class="carousel-inner">
+  <div class="carousel-inner" style={isExpanded ? '' : 'display:none'}>
     <div class="spinner-border spinner-container" role="status" />
-    {#each zip([videoResult.starts, videoResult.ends]) as [start, end], index}
+    {#each zip([clipResult.starts, clipResult.ends]) as [start, end], index}
       <div class={carouselItemClasses[index]}>
         {#if isExpanded && activeIndex === index}
           <iframe
-            title={`${videoResult.videoId}-${start}-${end}`}
-            src={iframeSrc(videoResult.videoId, start, end)}
+            title={`${clipResult.videoId}-${start}-${end}`}
+            src={iframeSrc(clipResult.videoId, start, end)}
           />
         {/if}
       </div>
@@ -123,7 +123,7 @@
 
 <div class="py-2 mt-2">
   <div class="track">
-    {#each videoResult.starts as start, index}
+    {#each clipResult.starts as start, index}
       <div
         on:mousedown={() => (activeIndex = index)}
         class="button dot"

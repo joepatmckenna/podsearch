@@ -1,26 +1,26 @@
 import type { Actions, RequestEvent } from '@sveltejs/kit';
 
-import { zip, argsort, sum } from '$lib/utils';
+import { argsort, mean, sum, zip } from '$lib/utils';
 
-const RESULT_MARGIN_SECS = 300;
+const RESULT_MARGIN_SECS = 120;
 const MAX_RESULTS_PER_VIDEO = 8;
-const SCORE_THRESHOLD = 0.33;
+const SCORE_THRESHOLD = 0.5;
 
 interface SearchResult {
   video_id: string;
   score: number;
   start: number;
   end: number;
-  captions_start: number;
-  captions_end: number;
+  // captions_start: number;
+  // captions_end: number;
 }
 
 interface VideoSearchResult {
   scores: number[];
   starts: number[];
   ends: number[];
-  captions_starts: number[];
-  captions_ends: number[];
+  // captions_starts: number[];
+  // captions_ends: number[];
 }
 
 interface VideoMetadata {
@@ -29,105 +29,138 @@ interface VideoMetadata {
 
 let VIDEOS: VideoMetadata[];
 
-const aggregateResultsByVideo = (results: SearchResult[]) => {
-  const _videoResults: VideoSearchResult[] = Object.entries(
-    // reformat videoId -> { (aggregated values) }
-    results.reduce(
-      (
-        resultsByVideoId: { [videoId: string]: VideoSearchResult },
-        { video_id: videoId, score, start, end, captions_start, captions_end }
-      ) => {
-        if (score > SCORE_THRESHOLD) {
-          const videoResult: VideoSearchResult = resultsByVideoId[videoId] || {
-            scores: [],
-            starts: [],
-            ends: [],
-            captions_starts: [],
-            captions_ends: []
-          };
-          videoResult.scores.push(score);
-          videoResult.starts.push(start);
-          videoResult.ends.push(end);
-          videoResult.captions_starts.push(captions_start);
-          videoResult.captions_ends.push(captions_end);
-          resultsByVideoId[videoId] = videoResult;
+const aggregateResults = (results: SearchResult[]) => {
+  let episodeResults = [];
+  let clipResults = [];
+
+  for (let result of results) {
+    if (result.start === -1) {
+      episodeResults.push(result);
+    } else {
+      clipResults.push(result);
+    }
+  }
+
+  // episodes
+
+  let episodeResultsByVideoId: { [videoId: string]: { scores: number[] } } = {};
+
+  for (let { video_id: videoId, score } of episodeResults) {
+    if (!episodeResultsByVideoId[videoId]) {
+      episodeResultsByVideoId[videoId] = { scores: [score] };
+    } else {
+      episodeResultsByVideoId[videoId].scores.push(score);
+    }
+  }
+
+  episodeResults = Object.entries(episodeResultsByVideoId).map(
+    ([videoId, result]) => ({ ...result, ...{ videoId: videoId } })
+  );
+
+  // average scores
+  episodeResults = episodeResults.map((result) => ({
+    ...result,
+    score: mean(result.scores)
+  }));
+
+  // filter episodes
+  episodeResults = episodeResults.filter(
+    ({ score, scores }) => score > 0.5 || scores.length > 3
+  );
+
+  // sort by avg score
+  episodeResults = episodeResults.sort(
+    ({ score: s1 }, { score: s2 }) => s2 - s1
+  );
+
+  // add in the video metadata
+  episodeResults = episodeResults.map((result) => ({
+    ...result,
+    ...VIDEOS[result.videoId]
+  }));
+
+  // clips
+
+  let clipResultsByVideoId: { [videoId: string]: VideoSearchResult } = {};
+  for (let { video_id: videoId, score, start, end } of clipResults) {
+    if (score > SCORE_THRESHOLD) {
+      if (!clipResultsByVideoId[videoId]) {
+        clipResultsByVideoId[videoId] = {
+          scores: [score],
+          starts: [start],
+          ends: [end]
+        };
+      } else {
+        clipResultsByVideoId[videoId].scores.push(score);
+        clipResultsByVideoId[videoId].starts.push(start);
+        clipResultsByVideoId[videoId].ends.push(end);
+      }
+    }
+  }
+
+  clipResults = Object.entries(clipResultsByVideoId).map(
+    ([videoId, result]) => ({ ...result, ...{ videoId: videoId } })
+  );
+
+  clipResults = clipResults.map((result) => ({
+    ...result,
+    score:
+      0.333 * sum(result.scores) +
+      0.333 * mean(result.scores) +
+      0.333 * result.scores.length
+  }));
+
+  // sort by video score
+  clipResults = clipResults.sort(({ score: s1 }, { score: s2 }) => s2 - s1);
+
+  // order clips by score
+  clipResults = clipResults.map((result) => {
+    const order = argsort(result.scores.map((s) => -s));
+    for (const key of ['scores', 'starts', 'ends']) {
+      result[key] = order.map((i) => result[key][i]);
+    }
+    return result;
+  });
+
+  // remove overlapping results
+  clipResults = clipResults.map((result) => {
+    const keep = zip([result.starts, result.ends]).reduce(
+      ({ indices, ends }, [start, end], index) => {
+        if (
+          indices.length === 0 ||
+          start > ends[ends.length - 1] + RESULT_MARGIN_SECS
+        ) {
+          indices.push(index);
+          ends.push(end);
         }
-        return resultsByVideoId;
+        return { indices: indices, ends: ends };
       },
-      {}
-    )
-  )
-    // move videoId keys into values, convert map to array
-    .map(([videoId, videoResult]) => {
-      videoResult.videoId = videoId;
-      return videoResult;
-    })
-    // sort by agg (summed) score
-    .sort(({ scores: s1 }, { scores: s2 }) => sum(s2) - sum(s1))
-    // select top results per video
-    .map((videoResult) => {
-      const n = Math.min(MAX_RESULTS_PER_VIDEO, videoResult.scores.length);
-      const order = argsort(videoResult.scores.map((s) => -s)).slice(0, n);
-      for (const key of [
-        'scores',
-        'starts',
-        'ends',
-        'captions_starts',
-        'captions_ends'
-      ]) {
-        videoResult[key] = order.map((i) => videoResult[key][i]);
-      }
-      return videoResult;
-    })
-    // sort timestamps and caption indices
-    .map((videoResult) => {
-      const order = argsort(videoResult.ends);
-      for (const key of [
-        'scores',
-        'starts',
-        'ends',
-        'captions_starts',
-        'captions_ends'
-      ]) {
-        videoResult[key] = order.map((i) => videoResult[key][i]);
-      }
-      return videoResult;
-    })
-    // remove intersecting intervals
-    .map((videoResult) => {
-      const keep = zip([videoResult.starts, videoResult.ends]).reduce(
-        ({ indices, ends }, [start, end], index) => {
-          if (
-            indices.length == 0 ||
-            start > ends[ends.length - 1] + RESULT_MARGIN_SECS
-          ) {
-            indices.push(index);
-            ends.push(end);
-          }
-          return { indices: indices, ends: ends };
-        },
-        { indices: [], ends: [] }
-      );
-      for (const key of [
-        'scores',
-        'starts',
-        'ends',
-        'captions_starts',
-        'captions_ends'
-      ]) {
-        videoResult[key] = keep.indices.map((i) => videoResult[key][i]);
-      }
-      return videoResult;
-    })
-    // only keep videos with >1 result
-    .filter((videoResult) => videoResult.scores.length > 1)
-    // keep top videos
-    .slice(0, 32)
-    // add in video metadata
-    .map((videoResult) => {
-      return { ...videoResult, ...VIDEOS[videoResult.videoId] };
-    });
-    // .filter((videoResult) => videoResult.playableInEmbed);
+      { indices: [], ends: [] }
+    );
+    for (const key of ['scores', 'starts', 'ends']) {
+      result[key] = keep.indices.map((i) => result[key][i]);
+    }
+    return result;
+  });
+
+  // add in video metadata
+  clipResults = clipResults.map((result) => {
+    return { ...result, ...VIDEOS[result.videoId] };
+  });
+
+  // keep top videos
+  clipResults = clipResults.slice(0, 16);
+
+  return [episodeResults, clipResults];
+
+  // // only keep videos with >1 result
+  // .filter((videoResult) => videoResult.scores.length > 1)
+  // // keep top videos
+  // .slice(0, 32)
+  // const n = Math.min(MAX_RESULTS_PER_VIDEO, result.scores.length);
+  // .slice(0, n);
+
+  // .filter((videoResult) => videoResult.playableInEmbed);
   // // add in captions
   // .map((videoResult) => {
   //   videoResult.captions = zip([
@@ -140,8 +173,6 @@ const aggregateResultsByVideo = (results: SearchResult[]) => {
   //   });
   //   return videoResult;
   // });
-
-  return _videoResults;
 };
 
 export const actions: Actions = {
@@ -155,7 +186,9 @@ export const actions: Actions = {
     const data = await searchResponse.json();
     const results: SearchResult[] = data.results;
     if (!VIDEOS) VIDEOS = await (await fetch(`${url}api/videos`)).json();
-    data.videoResults = aggregateResultsByVideo(results);
+    let [episodeResults, clipResults] = aggregateResults(results);
+    data.episodeResults = episodeResults;
+    data.clipResults = clipResults;
     return data;
   }
 };

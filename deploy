@@ -42,7 +42,7 @@ function get_src() {
         )
     elif [[ "${SERVICE}" == "frontendv2" ]]; then
         SRC=(
-            assets/frontendv2/*
+            # assets/frontendv2/*
             frontendv2/Dockerfile
             frontendv2/.svelte-kit
             frontendv2/src

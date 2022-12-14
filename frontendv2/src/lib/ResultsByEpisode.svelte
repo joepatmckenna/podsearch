@@ -1,6 +1,15 @@
 <script>
-  import {sum} from "$lib/utils.ts"
+  import {sum} from "$lib/utils.ts";
   import InfiniteScroll from "svelte-infinite-scroll";
+
+  import { onMount } from 'svelte';
+
+  let Carousel;
+  onMount(async () => {
+    const module = await import('svelte-carousel');
+    Carousel = module.default;
+  });
+
   import ClipCarousel from './ClipCarousel.svelte';
   const resultsPerPage = 4;
 
@@ -36,33 +45,38 @@
 <!-- <svelte:window on:keydown={onKeyDown} /> -->
 
 {#if episodeResults && clipResults}
-  <!-- {#if clipResults.length === 0}
-    <div class="container-fluid py-2">
-      <div class="mx-2">
-        <p class="text-left" style="font-style:italic;">
-          Didn't find any relevant results.
-        </p>
-      </div>
+{#if clipResults.length === 0 && episodeResults.length === 0}
+  <div class="container-fluid py-2">
+    <div class="mx-2">
+      <p class="text-left" style="font-style:italic;">
+        Didn't find any relevant results.
+      </p>
     </div>
-  {:else if clipResults.length > 0} -->
-    <div class="container-fluid py-2" id="results-container">
-
-      {#if episodeResults.length > 0}
+  </div>
+{:else}
+  <div class="container-fluid py-2" id="results-container">
+    {#if episodeResults.length > 0}
       <h1>Episodes</h1>
       <div
         class="card my-3 p-2"
-        style={'box-shadow: 0px 0px 4px black;'}
       >
-      <div class="row">
-
-        {#each episodeResults as episodeResult, index}
-        <div class="col-3"><img
-          style="border-radius:8px; width:100%;"
-          alt={episodeResult.title}
-          src={episodeResult.thumbnails.default.url}
-        />
-      </div>
-        {/each}
+        <div class="row">
+          <svelte:component this={Carousel}
+            particlesToShow={3}
+            particlesToScroll={3}
+            infinite={false}
+          >
+          {#each episodeResults as episodeResult, index}
+          <div class="col-3 p-2">
+            <a href={`https://www.youtube.com/watch?v=${episodeResult.videoId}`} target="_blank" rel="noreferrer"><img
+              style="border-radius:8px;"
+              alt={episodeResult.title}
+              src={episodeResult.thumbnails.default.url}
+            />
+          </a>
+          </div>
+          {/each}
+          </svelte:component>
       </div>
     </div>
       {/if}
@@ -74,7 +88,7 @@
           class="card my-3 p-2"
           style={activeCardIndex == index
             ? 'box-shadow: 0px 0px 6px #fff;'
-            : 'box-shadow: 0px 0px 4px black;'}
+            : 'box-shadow: 0px 0px 4px #000;'}
         >
           <div class="container-fluid">
             <div class="row" on:mousedown={() => (activeCardIndex = activeCardIndex === index ? null : index)}>
@@ -146,7 +160,7 @@
      -->
   </div>
 
-  <!-- {/if} -->
+  {/if}
 {/if}
 
 <InfiniteScroll 

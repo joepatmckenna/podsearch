@@ -1,5 +1,6 @@
 <script>
   import NavBar from '$lib/NavBar.svelte';
+  import Footer from '$lib/Footer.svelte';
   import SearchBar from '$lib/SearchBar.svelte';
   import ResultsByEpisode from '$lib/ResultsByEpisode.svelte';
 
@@ -45,11 +46,17 @@
     <SearchBar {form} />
     <ResultsByEpisode {form} />
   </div>
+  <Footer />
 </div>
 
 <style>
-  .search-container {
-    max-width: 590px;
+  .page-container {
     min-height: 100vh;
   }
+
+  .search-container {
+    min-height: 100vh;
+    max-width: 590px;
+  }
+
 </style>

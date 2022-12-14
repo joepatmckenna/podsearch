@@ -1,11 +1,11 @@
 <script>
     import logo from '$lib/assets/logo.png';
 </script>
-  
-<nav class="navbar navbar-expand-sm">
 
-  
-  <div 
+<!-- navbar-expand-sm -->
+<nav class="navbar">
+
+  <!-- <div 
     class="navbar-toggler" 
     data-toggle="collapse" 
     data-target="#navbarSupportedContent" 
@@ -13,9 +13,10 @@
     aria-expanded="false" 
   >
     <img class="logo mx-2" alt="Portrait of Lex" src={logo} />
-  </div> 
+  </div>  -->
 
-  <div class="navbar-brand collapse navbar-collapse mx-4" id="navbarSupportedContent">
+  <!-- collapse navbar-collapse -->
+  <div class="mx-4" id="navbarSupportedContent">
     <span><a href="https://lexfridman.com/podcast/">Lex Fridman Podcast</a> search engine</span>    
   </div>
 
@@ -30,22 +31,21 @@
   .navbar {
     background-color: rgb(0,0,0,0.25);
   }
-
-  .navbar-brand {
-    color: #fff;
-    font-size: medium;
-  }
-
   a {
     color: #fff;
     text-decoration: none;
   }
-  
-  .logo {
+
+  a:hover {
+    color: #aaa;
+  }
+
+  /* .logo {
     width: 32px;
     background-color: #aaa;
     border-radius: 50%;
-  }
+  } */
+  
   .bi-youtube {
     color: red;
     font-size: 1.5em;
